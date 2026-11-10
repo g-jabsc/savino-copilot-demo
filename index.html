@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Building a Copilot Agent in Savino's Microsoft 365 Environment — G·IT·up</title>
+<style>
+  :root{
+    --indigo-1:#667eea; --indigo-2:#764ba2; --ink:#1d2333; --muted:#5b6478;
+    --line:#e6e8f0; --bg:#f6f7fb; --card:#ffffff; --ga:#1f9d6b; --ga-bg:#e7f6ef;
+    --prev:#c9820a; --prev-bg:#fcf3e2; --rec:#5a3bd6; --rec-bg:#efeaff;
+    --shadow:0 2px 10px rgba(32,38,70,.06); --shadow-2:0 8px 28px rgba(32,38,70,.12);
+    --r:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55}
+  a{color:#5a3bd6}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+  /* ---- header ---- */
+  header.hero{background:linear-gradient(120deg,var(--indigo-1),var(--indigo-2));color:#fff;padding:54px 0 48px}
+  .brandrow{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+  .mark{width:44px;height:44px;border-radius:11px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-weight:800;letter-spacing:.5px;font-size:15px}
+  .brandrow .nm{font-weight:700;letter-spacing:.3px}
+  .brandrow .nm small{display:block;font-weight:400;opacity:.8;font-size:12px;letter-spacing:.2px}
+  header.hero h1{margin:0 0 12px;font-size:34px;line-height:1.2;max-width:860px}
+  header.hero p.sub{margin:0;font-size:17px;opacity:.95;max-width:760px}
+  .herometa{margin-top:24px;display:flex;flex-wrap:wrap;gap:10px}
+  .herometa span{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);padding:7px 13px;border-radius:999px;font-size:13px}
+  /* ---- nav ---- */
+  nav.jump{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav.jump .wrap{display:flex;gap:4px;overflow-x:auto;padding-top:9px;padding-bottom:9px}
+  nav.jump a{white-space:nowrap;font-size:13px;color:var(--muted);text-decoration:none;padding:7px 12px;border-radius:9px;font-weight:600}
+  nav.jump a:hover{background:var(--bg);color:var(--ink)}
+  /* ---- sections ---- */
+  section{padding:46px 0;border-bottom:1px solid var(--line)}
+  section h2{font-size:25px;margin:0 0 6px}
+  section .lead{color:var(--muted);margin:0 0 26px;max-width:760px}
+  .eyebrow{text-transform:uppercase;letter-spacing:1.4px;font-size:12px;font-weight:700;color:#8a4fd0;margin:0 0 8px}
+  /* ---- badges ---- */
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.3px;vertical-align:middle}
+  .b-ga{background:var(--ga-bg);color:var(--ga)}
+  .b-prev{background:var(--prev-bg);color:var(--prev)}
+  .b-rec{background:var(--rec-bg);color:var(--rec)}
+  .b-nocode{background:#eaf0ff;color:#3a62c7}
+  .b-lowcode{background:#e8f7f1;color:#1f9d6b}
+  .b-procode{background:#f3ebff;color:#7b3fe4}
+  /* ---- spectrum ladder ---- */
+  .ladder{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:10px}
+  .rung{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .rung::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px}
+  .rung.nc::before{background:#3a62c7}.rung.lc::before{background:#1f9d6b}.rung.pc::before{background:#7b3fe4}
+  .rung h3{margin:0 0 4px;font-size:17px}
+  .rung .who{color:var(--muted);font-size:13px;margin:0 0 10px}
+  .rung ul{margin:0;padding-left:18px;font-size:13.5px;color:#3c4357}
+  .rung ul li{margin:3px 0}
+  .arrowline{text-align:center;color:var(--muted);font-size:13px;margin:4px 0 18px}
+  /* ---- option cards ---- */
+  .filterbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;align-items:center}
+  .filterbar .lbl{font-size:13px;color:var(--muted);font-weight:600;margin-right:4px}
+  .chip{border:1px solid var(--line);background:#fff;color:#45506a;font-size:13px;font-weight:600;padding:6px 13px;border-radius:999px;cursor:pointer;transition:.12s}
+  .chip:hover{border-color:#c7b8f0}
+  .chip.on{background:var(--rec-bg);border-color:#b9a4f0;color:#4a2db8}
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .opt{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);transition:.15s;overflow:hidden}
+  .opt.hide{display:none}
+  .opt.isrec{border-color:#c3b0f2;box-shadow:0 0 0 2px #e4dbfb, var(--shadow)}
+  .opt .head{padding:16px 18px;cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .opt .head:hover{background:#faf9ff}
+  .opt .t{font-size:16.5px;font-weight:700;margin:0 0 5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .opt .sub{color:var(--muted);font-size:13px;margin:0}
+  .opt .chev{color:#b7bccb;font-size:13px;margin-top:3px;transition:.2s}
+  .opt.open .chev{transform:rotate(90deg)}
+  .opt .body{max-height:0;overflow:hidden;transition:max-height .28s ease}
+  .opt.open .body{max-height:900px}
+  .opt .bodyinner{padding:0 18px 18px}
+  .opt .meta{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;margin-bottom:12px}
+  .opt .meta b{color:#3c4357}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .pro,.con{font-size:13px}
+  .pro h5,.con h5{margin:0 0 5px;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  .pro h5{color:var(--ga)}.con h5{color:#c0506a}
+  .pro ul,.con ul{margin:0;padding-left:16px}.pro li,.con li{margin:3px 0}
+  .fit{margin-top:12px;background:var(--rec-bg);border:1px solid #ddd2f8;border-radius:10px;padding:11px 13px;font-size:13px}
+  .fit b{color:#4a2db8}
+  /* ---- generic card ---- */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:20px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  /* ---- archetype toggle ---- */
+  .seg{display:inline-flex;background:#eceaffaa;border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:18px}
+  .seg button{border:0;background:transparent;font:inherit;font-weight:700;font-size:13.5px;color:var(--muted);padding:8px 18px;border-radius:999px;cursor:pointer}
+  .seg button.on{background:#fff;color:#4a2db8;box-shadow:var(--shadow)}
+  .arch{display:none}.arch.on{display:block}
+  /* ---- pipeline ---- */
+  .pipe{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  .pstep{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 12px;text-align:center;cursor:pointer;box-shadow:var(--shadow);transition:.12s;position:relative}
+  .pstep:hover{border-color:#c7b8f0;transform:translateY(-2px)}
+  .pstep .n{width:26px;height:26px;border-radius:50%;background:var(--rec-bg);color:#4a2db8;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+  .pstep .nm{font-size:13.5px;font-weight:700}
+  .pstep.on{background:#4a2db8;border-color:#4a2db8}.pstep.on .nm{color:#fff}.pstep.on .n{background:#fff;color:#4a2db8}
+  .pexpl{margin-top:14px;background:var(--card);border:1px solid var(--line);border-left:4px solid #7b3fe4;border-radius:10px;padding:14px 16px;font-size:14px;min-height:56px}
+  /* ---- rollout / autonomy ---- */
+  .roll{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .rcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+  .rcard h4{margin:0 0 4px;font-size:16px}
+  .rcard .tag{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+  .rcard p{font-size:13.5px;color:#3c4357;margin:8px 0 0}
+  .autobox{margin-top:20px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow)}
+  .pathrow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px dashed var(--line);font-size:14px}
+  .pathrow:last-child{border-bottom:0}
+  .pathrow .lab b{display:block}
+  .pathrow .lab small{color:var(--muted)}
+  .toggle{position:relative;width:132px;height:34px;border-radius:999px;border:1px solid var(--line);background:#f0f1f6;cursor:pointer;flex:none;overflow:hidden}
+  .toggle .knob{position:absolute;top:3px;left:3px;width:62px;height:26px;border-radius:999px;background:#fff;box-shadow:var(--shadow);transition:.2s;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted)}
+  .toggle .lblset{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:11px;font-weight:700;color:#9aa1b4;text-transform:uppercase;letter-spacing:.4px}
+  .toggle.auto{background:var(--ga-bg);border-color:#bfe6d4}
+  .toggle.auto .knob{left:67px;color:var(--ga)}
+  .toggle.auto .lblset .l{color:var(--ga)}
+  /* ---- access checklist ---- */
+  .access{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .acc{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;box-shadow:var(--shadow);cursor:pointer}
+  .acc .ck{flex:none;width:22px;height:22px;border-radius:6px;border:2px solid #cfd3e0;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;transition:.12s}
+  .acc.done .ck{background:var(--ga);border-color:var(--ga)}
+  .acc .txt b{display:block;font-size:14px}
+  .acc .txt small{color:var(--muted);font-size:12.5px}
+  .acc .who{margin-top:5px;font-size:11.5px;color:#7b3fe4;font-weight:700}
+  .progress{height:8px;background:#e9eaf2;border-radius:999px;overflow:hidden;margin:4px 0 18px}
+  .progress > i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--indigo-1),var(--indigo-2));transition:.3s}
+  /* ---- limitations ---- */
+  .lim{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden}
+  .lim .lh{padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:15px}
+  .lim .lh:hover{background:#faf9ff}
+  .lim .lb{max-height:0;overflow:hidden;transition:max-height .25s}
+  .lim.open .lb{max-height:480px}
+  .lim .lb ul{margin:0;padding:0 18px 16px 34px;font-size:13.5px;color:#3c4357}
+  .lim .lb li{margin:6px 0}
+  .lim .chev{color:#b7bccb;transition:.2s}.lim.open .chev{transform:rotate(90deg)}
+  /* ---- fit selector ---- */
+  .selector{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-2);padding:22px}
+  .q{margin-bottom:16px}
+  .q p{margin:0 0 8px;font-weight:700;font-size:14.5px}
+  .q .opts{display:flex;flex-wrap:wrap;gap:8px}
+  .result{margin-top:6px;background:linear-gradient(120deg,#f3efff,#eef4ff);border:1px solid #d9d0f6;border-radius:12px;padding:18px 20px}
+  .result .rtitle{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:#8a4fd0;font-weight:700;margin:0 0 6px}
+  .result .rpick{font-size:20px;font-weight:800;margin:0 0 6px;color:#3a2399}
+  .result .rwhy{font-size:14px;color:#3c4357;margin:0}
+  /* ---- footer ---- */
+  footer{padding:30px 0;color:var(--muted);font-size:13px;text-align:center}
+  .note{background:#fff;border:1px dashed #d9d0f6;border-radius:12px;padding:14px 16px;font-size:13px;color:#4a4f63;margin-top:18px}
+  @media(max-width:860px){
+    .ladder,.cards,.grid2,.twocol,.roll,.access{grid-template-columns:1fr}
+    .pipe{grid-template-columns:repeat(3,1fr)}
+    header.hero h1{font-size:27px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brandrow">
+      <div class="mark">G·IT</div>
+      <div class="nm">G·IT·up<small>Traditional IT expertise, amplified by AI</small></div>
+    </div>
+    <h1>Building a Copilot agent inside Savino's Microsoft&nbsp;365 environment</h1>
+    <p class="sub">An interactive walkthrough of every Microsoft development route for an AI email agent — from
+      no-code to pro-code — how each fits Savino's estate, and where we recommend starting.</p>
+    <div class="herometa">
+      <span>Prepared by G·IT·up</span>
+      <span>For Savino Del Bene</span>
+      <span>Microsoft 365 · Copilot · Power Platform</span>
+      <span>Meeting briefing</span>
+    </div>
+  </div>
+</header>
+
+<nav class="jump">
+  <div class="wrap">
+    <a href="#spectrum">Spectrum</a>
+    <a href="#options">Build options</a>
+    <a href="#archetypes">Two archetypes</a>
+    <a href="#email">The email agent</a>
+    <a href="#pipeline">Pipeline</a>
+    <a href="#rollout">Rollout & autonomy</a>
+    <a href="#access">Access needed</a>
+    <a href="#limits">Limitations</a>
+    <a href="#selector">Which fits?</a>
+  </div>
+</nav>
+
+<!-- SPECTRUM -->
+<section id="spectrum">
+  <div class="wrap">
+    <p class="eyebrow">The landscape</p>
+    <h2>One estate, three levels of control</h2>
+    <p class="lead">Every option below builds agents that live inside Savino's own Microsoft&nbsp;365 tenant. They
+      differ in <b>who builds them</b> and <b>how much control</b> you get — not in where the data lives. Microsoft's
+      own rule of thumb: prototype low, harden in the middle, productionise high only when the workload demands it.</p>
+    <div class="ladder">
+      <div class="rung nc">
+        <h3>No-code <span class="badge b-nocode">Business user</span></h3>
+        <p class="who">Describe it in plain English; Copilot assembles it.</p>
+        <ul>
+          <li>Agent Builder (in M365 Copilot / Teams)</li>
+          <li>Fast, personal/departmental agents</li>
+          <li>No source control, no complex workflows</li>
+        </ul>
+      </div>
+      <div class="rung lc">
+        <h3>Low-code <span class="badge b-lowcode">Maker + IT</span></h3>
+        <p class="who">Drag-and-drop on Power Platform, with governance built in.</p>
+        <ul>
+          <li>Copilot Studio (our recommended base)</li>
+          <li>Hundreds of prebuilt connectors</li>
+          <li>Human-approval step sits here cleanly</li>
+        </ul>
+      </div>
+      <div class="rung pc">
+        <h3>Pro-code <span class="badge b-procode">Developer</span></h3>
+        <p class="who">Full control of orchestration, model and channels, in VS Code.</p>
+        <ul>
+          <li>M365 Agents Toolkit / Agents SDK</li>
+          <li>Teams AI Library · Azure AI Foundry</li>
+          <li>Git, CI/CD, bring-your-own model</li>
+        </ul>
+      </div>
+    </div>
+    <p class="arrowline">◀ simpler to build · less control &nbsp;—&nbsp; more control · more engineering ▶</p>
+  </div>
+</section>
+
+<!-- OPTIONS -->
+<section id="options">
+  <div class="wrap">
+    <p class="eyebrow">Build options in detail</p>
+    <h2>Every development route, side by side</h2>
+    <p class="lead">Click any card to open its full detail — who builds it, generally-available vs preview, strengths,
+      trade-offs, and how it fits Savino. Filter by level to focus the conversation.</p>
+    <div class="filterbar">
+      <span class="lbl">Show:</span>
+      <button class="chip on" data-f="all">All</button>
+      <button class="chip" data-f="nocode">No-code</button>
+      <button class="chip" data-f="lowcode">Low-code</button>
+      <button class="chip" data-f="procode">Pro-code</button>
+    </div>
+    <div class="cards" id="optcards"><!-- injected --></div>
+  </div>
+</section>
+
+<!-- ARCHETYPES -->
+<section id="archetypes">
+  <div class="wrap">
+    <p class="eyebrow">Before you pick a tool</p>
+    <h2>Two kinds of agent</h2>
+    <p class="lead">Whatever tool builds it, a Microsoft 365 agent is one of two archetypes. The choice of archetype
+      comes first; the build tool follows.</p>
+    <div class="seg">
+      <button class="on" data-arch="da">Declarative agent</button>
+      <button data-arch="cea">Custom-engine agent</button>
+    </div>
+    <div class="arch on" id="arch-da">
+      <div class="panel">
+        <h3 style="margin:0 0 6px">Configure Copilot</h3>
+        <p style="margin:0 0 12px;color:var(--muted)">You give Copilot custom <b>instructions, knowledge and actions</b>.
+          Copilot's own orchestrator and model do the reasoning. No extra hosting to run.</p>
+        <div class="twocol">
+          <div class="pro"><h5>Strengths</h5><ul>
+            <li>Shortest path; nothing to host or maintain</li>
+            <li>Inherits M365 security, compliance and responsible-AI</li>
+            <li>Knowledge from SharePoint, OneDrive, Graph connectors, files, web</li>
+            <li>Actions via OpenAPI plugins and MCP servers <span class="badge b-ga">GA Dec 2025</span></li>
+          </ul></div>
+          <div class="con"><h5>Limits</h5><ul>
+            <li>Can't choose the model or the orchestration logic</li>
+            <li>No proactive messaging; no non-Microsoft channels</li>
+            <li>Bounded by Copilot's fixed reasoning behaviour</li>
+          </ul></div>
+        </div>
+        <div class="fit"><b>For Savino:</b> the natural start if the agent reads M365 knowledge and drafts replies —
+          minimal moving parts. Build it in Agent Builder, Copilot Studio or the Agents Toolkit.</div>
+      </div>
+    </div>
+    <div class="arch" id="arch-cea">
+      <div class="panel">
+        <h3 style="margin:0 0 6px">Extend with your own engine</h3>
+        <p style="margin:0 0 12px;color:var(--muted)">You bring your <b>own orchestrator, model, tools, memory and
+          channels</b>. Surfaces through Copilot Studio, Teams, web, mobile and custom apps.</p>
+        <div class="twocol">
+          <div class="pro"><h5>Strengths</h5><ul>
+            <li>Full control of workflow, model choice and integrations</li>
+            <li>Proactive messages; reach beyond Microsoft 365</li>
+            <li>Plug in Azure OpenAI, Azure AI Search, custom tools</li>
+            <li>Low-code (Copilot Studio) <i>or</i> pro-code (SDKs / Foundry)</li>
+          </ul></div>
+          <div class="con"><h5>Costs</h5><ul>
+            <li>More to design, run and govern</li>
+            <li>Pro-code routes need developer skills in-house</li>
+            <li>Only warranted when the workload truly needs it</li>
+          </ul></div>
+        </div>
+        <div class="fit"><b>For Savino:</b> escalate here only when orchestration, model choice, proactivity, out-of-M365
+          reach or deeper retrieval demand it — e.g. reading a non-Microsoft freight system of record. A
+          <b>Copilot Studio custom-engine agent</b> gets most of this while staying low-code.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EMAIL AGENT -->
+<section id="email">
+  <div class="wrap">
+    <p class="eyebrow">Our focus for Savino</p>
+    <h2>The email agent — three build tiers in Copilot Studio</h2>
+    <p class="lead">For Savino's triage-draft-reply workstream we build on the two generally-available tiers and treat
+      the newest one as a future upgrade, never the foundation of a committed deliverable.</p>
+    <div class="grid2">
+      <div class="panel">
+        <div class="t" style="font-weight:700;font-size:16px;display:flex;gap:8px;align-items:center;margin-bottom:5px">
+          Autonomous agent + native email trigger <span class="badge b-ga">GA</span></div>
+        <p style="margin:0;color:#3c4357;font-size:13.5px">Trigger configured directly on the agent — no separate flow
+          to maintain. It runs the moment an email lands. An Activity log records every action for audit. This is our
+          <b>primary build target</b>.</p>
+      </div>
+      <div class="panel">
+        <div class="t" style="font-weight:700;font-size:16px;display:flex;gap:8px;align-items:center;margin-bottom:5px">
+          Power Automate flow → topic <span class="badge b-ga">GA</span></div>
+        <p style="margin:0;color:#3c4357;font-size:13.5px">The classic pattern where we need flow-level control. The
+          draft is intercepted at the "AI Response Generated" topic — <b>exactly where the human-approval step is
+          inserted</b> instead of auto-sending.</p>
+      </div>
+      <div class="panel" style="grid-column:1 / -1">
+        <div class="t" style="font-weight:700;font-size:16px;display:flex;gap:8px;align-items:center;margin-bottom:5px">
+          Work IQ / MCP dynamic Outlook access <span class="badge b-prev">PREVIEW</span></div>
+        <p style="margin:0;color:#3c4357;font-size:13.5px">The newest layer: the agent is given a discoverable toolkit
+          and reasons at runtime which tools to use — e.g. searching email history to contextualise a reply. Microsoft's
+          own guidance keeps human review necessary for customer-facing output here. <b>We demonstrate it, we don't
+          build Savino's committed deliverable on it until it ships GA.</b></p>
+      </div>
+    </div>
+    <div class="note">⚠︎ Rule we hold to: a committed deliverable is never based on a preview feature. Preview tiers are
+      shown for direction only.</div>
+  </div>
+</section>
+
+<!-- PIPELINE -->
+<section id="pipeline">
+  <div class="wrap">
+    <p class="eyebrow">How one email flows</p>
+    <h2>The agent pipeline</h2>
+    <p class="lead">One pass per inbound message. Click a step to see what happens.</p>
+    <div class="pipe" id="pipe"></div>
+    <div class="pexpl" id="pexpl">Select a step above.</div>
+  </div>
+</section>
+
+<!-- ROLLOUT -->
+<section id="rollout">
+  <div class="wrap">
+    <p class="eyebrow">How we go live</p>
+    <h2>Human-in-the-loop first — autonomy is a switch, not a rebuild</h2>
+    <p class="lead">Every send ships in <b>approve mode</b>. As a reply path proves itself on real traffic, Savino flips
+      that path to auto-send with a configuration change. The drafting work is identical either way.</p>
+    <div class="roll">
+      <div class="rcard"><span class="tag">Phase 0</span><h4>Connect &amp; classify</h4>
+        <p>Agent reads, classifies and drafts into a review queue. Nothing is sent. Proves accuracy on real Savino mail
+          while touching nothing live.</p></div>
+      <div class="rcard"><span class="tag">Phase 1</span><h4>Assist</h4>
+        <p>Agent drafts autonomously; a person approves every send. Knowledge sources the replies depend on are added.</p></div>
+      <div class="rcard"><span class="tag">Phase 2</span><h4>Automate</h4>
+        <p>Proven reply paths flip from "human approves" to "auto-send", one at a time, by configuration.</p></div>
+    </div>
+    <div class="autobox">
+      <p style="margin:0 0 4px;font-weight:700">Try it — governance toggle per reply path</p>
+      <p style="margin:0 0 6px;color:var(--muted);font-size:13px">This is the real decision Savino makes per path. The
+        execution path doesn't change — only who clicks send.</p>
+      <div id="paths"></div>
+      <p style="margin:14px 0 0;font-size:13px" id="autosummary"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ACCESS -->
+<section id="access">
+  <div class="wrap">
+    <p class="eyebrow">What we need from Savino</p>
+    <h2>Access &amp; permissions to build in your tenant</h2>
+    <p class="lead">The access list Savino's administrators sign off before build starts. Tick each as it's agreed — the
+      bar tracks readiness. The two most commonly mis-scoped items are flagged.</p>
+    <div class="progress"><i id="accbar"></i></div>
+    <div class="access" id="acclist"></div>
+    <div class="note">The whole list is time-boxed in the statement of work and revoked at handover. We ask Savino's
+      admins to <b>create</b> environments and grant roles rather than hand us administrator rights.</div>
+  </div>
+</section>
+
+<!-- LIMITS -->
+<section id="limits">
+  <div class="wrap">
+    <p class="eyebrow">Stated up front</p>
+    <h2>Limitations we build around</h2>
+    <p class="lead">None is a reason not to build on Copilot Studio; each is something we design around. Expand a theme.</p>
+    <div id="limlist"></div>
+  </div>
+</section>
+
+<!-- SELECTOR -->
+<section id="selector" style="border-bottom:0">
+  <div class="wrap">
+    <p class="eyebrow">Decide together</p>
+    <h2>Which option fits?</h2>
+    <p class="lead">Answer four questions the way Savino sees it; the recommendation updates live. This is a
+      conversation-starter, not a contract — the honest recommendation still depends on real volume and the systems in play.</p>
+    <div class="selector">
+      <div class="q" data-k="builder"><p>1. Who will build and own it?</p><div class="opts">
+        <button class="chip" data-v="business">A business user</button>
+        <button class="chip" data-v="maker">A maker + IT, with governance</button>
+        <button class="chip" data-v="dev">An in-house / partner developer</button>
+      </div></div>
+      <div class="q" data-k="control"><p>2. How much control over model &amp; logic?</p><div class="opts">
+        <button class="chip" data-v="none">Copilot's defaults are fine</button>
+        <button class="chip" data-v="some">Some — custom actions &amp; connectors</button>
+        <button class="chip" data-v="full">Full — own model, own orchestration</button>
+      </div></div>
+      <div class="q" data-k="reach"><p>3. Where must it run / reach?</p><div class="opts">
+        <button class="chip" data-v="m365">Inside Microsoft 365 only</button>
+        <button class="chip" data-v="connectors">M365 + a few external systems</button>
+        <button class="chip" data-v="beyond">Beyond M365 / proactive / many channels</button>
+      </div></div>
+      <div class="q" data-k="scale"><p>4. How far must it scale &amp; govern?</p><div class="opts">
+        <button class="chip" data-v="personal">Personal / departmental</button>
+        <button class="chip" data-v="lob">Line-of-business, with ALM</button>
+        <button class="chip" data-v="enterprise">Enterprise / ISV, CI-CD</button>
+      </div></div>
+      <div class="result">
+        <p class="rtitle">Suggested starting point</p>
+        <p class="rpick" id="rpick">Answer the questions above…</p>
+        <p class="rwhy" id="rwhy">We'll point to the lightest option that covers what you select, and name when to escalate.</p>
+      </div>
+      <div class="note" style="margin-top:16px">For Savino's email workstream specifically, our standing recommendation
+        is to start on <b>Copilot Studio (low-code)</b> against a dedicated test mailbox, on the GA tiers, with
+        human-approval on send — then escalate only if reading a non-Microsoft system of record or proactive reach
+        forces a custom-engine route.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    G·IT·up — Confidential · Prepared for Savino Del Bene · Capability tiers tagged GA / Preview per Microsoft
+    documentation; confirm current status &amp; pricing with Microsoft at quoting time.
+  </div>
+</footer>
+
+<script>
+/* ---------- DATA ---------- */
+const OPTIONS = [
+  {
+    id:'agentbuilder', name:'Agent Builder', level:'nocode', lvlLabel:'No-code',
+    sub:'Build an agent by describing it in Microsoft 365 Copilot / Teams',
+    status:'ga', archetype:'Declarative agent', tooling:'M365 Copilot app · Teams', owner:'Business user',
+    pros:['No coding — natural-language authoring','Guided setup, built-in test pane','Knowledge from SharePoint, web, files, connectors','Image generation & code interpreter on by default'],
+    cons:['No complex workflows or custom orchestration','No source control / ALM','Advanced features land here last','No MCP / multi-agent'],
+    fit:'Great for a quick proof-of-concept of the triage/draft idea — not the build we would hand over for production.'
+  },
+  {
+    id:'copilotstudio', name:'Copilot Studio', level:'lowcode', lvlLabel:'Low-code', rec:true,
+    sub:'Drag-and-drop agents on Power Platform — declarative OR custom-engine',
+    status:'ga', archetype:'Declarative or custom-engine', tooling:'copilotstudio.microsoft.com', owner:'Maker + IT',
+    pros:['Low-code; business-maker friendly','Hundreds of prebuilt Power Platform connectors','Built-in governance, deployment & test agent','Human-approval step inserts cleanly at the topic','Can plug in Azure OpenAI for a custom engine'],
+    cons:['Less fine control than pro-code','Pro-dev tooling (Git/CI-CD) less integrated','Adaptive Cards limited to schema 1.6','Some features arrive after the Toolkit'],
+    fit:'Our recommended base for Savino: fast to stand up, governed, and the natural home for the human-in-the-loop checkpoint and the GA email-trigger tiers.'
+  },
+  {
+    id:'agentstoolkit', name:'Microsoft 365 Agents Toolkit', level:'procode', lvlLabel:'Pro-code',
+    sub:'VS Code / Visual Studio — declarative & custom-engine with full ALM',
+    status:'ga', archetype:'Declarative or custom-engine', tooling:'VS Code / Visual Studio', owner:'Developer',
+    pros:['Full control of code, source control & CI-CD','Only path to edit the declarative-agent manifest directly','Custom API actions, Adaptive Cards, MCP, multi-agent','Local testing via Agents Playground'],
+    cons:['Requires developer skills in-house','Heaviest to stand up & maintain','Overkill for a single-mailbox agent'],
+    fit:'Where we would productionise if Savino later needs source-controlled, multi-environment agents — the "harden then productionise" end of the ladder.'
+  },
+  {
+    id:'teamsai', name:'Teams AI Library', level:'procode', lvlLabel:'Pro-code',
+    sub:'Pro-code custom-engine agents tailored to Microsoft Teams',
+    status:'ga', archetype:'Custom-engine agent', tooling:'VS Code / VS · C#, TS, JS, Python', owner:'Developer',
+    pros:['Built-in action-planner orchestrator','GPT models from Azure / OpenAI','Real-time collaborative agents in Teams channels & meetings'],
+    cons:['Teams-centric — not the email front door','Pro-code; you host & run it','Narrower channel reach than the Agents SDK'],
+    fit:'Not the fit for an email agent — listed so the full Microsoft landscape is on the table for Savino.'
+  },
+  {
+    id:'agentssdk', name:'Microsoft 365 Agents SDK', level:'procode', lvlLabel:'Pro-code',
+    sub:'Full-stack, multi-channel custom-engine agents',
+    status:'ga', archetype:'Custom-engine agent', tooling:'VS Code / VS · C#, JS, Python', owner:'Developer',
+    pros:['Bring your own orchestration (Semantic Kernel, LangChain)','Any model / any service','Runs across Copilot, Teams, partner apps, web, mobile','Marketplace / ISV publishing'],
+    cons:['Most engineering of any route','You own hosting, scaling & governance','Only warranted for advanced, multi-channel needs'],
+    fit:'The route if Savino ever needs a bespoke, multi-channel agent with its own model — beyond anything this email workstream requires today.'
+  },
+  {
+    id:'foundry', name:'Azure AI Foundry', level:'procode', lvlLabel:'Low / Pro-code',
+    sub:'Foundry-hosted agents integrated into Microsoft 365',
+    status:'ga', archetype:'Custom-engine agent', tooling:'Foundry Portal · or VS Code + Agents Toolkit', owner:'Maker or Developer',
+    pros:['Foundry OpenAI or custom models','Bring your own orchestration','Low-code portal or pro-code toolkit','Enterprise model governance'],
+    cons:['Another surface to govern','M365/Teams channels native; others need custom work','Heaviest for a simple reply agent'],
+    fit:'Relevant only if Savino standardises on Azure AI Foundry for model governance across many agents — not needed to ship the email agent.'
+  },
+  {
+    id:'wiqd', name:'Work IQ Dev Tools (wiqd)', level:'procode', lvlLabel:'Pro-code',
+    sub:'CLI + VS Code lifecycle for declarative agents',
+    status:'preview', archetype:'Declarative agent', tooling:'CLI · VS Code', owner:'Developer',
+    pros:['Guided create→validate→publish lifecycle','Offline validation & live manifest diagnostics','Named environments, CI pipelines'],
+    cons:['Preview — commands & behaviour can change','Declarative-agent scope only (no custom-engine)','Feature-gated / experimental surfaces'],
+    fit:'Evaluate-only. We would not base a Savino deliverable on a preview toolchain — shown for direction.'
+  }
+];
+
+const PIPE = [
+  ['Trigger','The agent (or a Power Automate flow) fires on a new message in the monitored mailbox, split to run once per email.'],
+  ['Classify','The agent interprets the message — query, request, notification or noise — from its content.'],
+  ['Ground','It retrieves the relevant facts from the knowledge sources Savino supplies (SharePoint, Excel, Dataverse), configured to refuse to answer from anything outside those sources where accuracy matters.'],
+  ['Draft','It composes a reply in Savino\u2019s required tone.'],
+  ['Approve','The draft routes to a person for one-click send (Assist), or \u2014 for a proven path Savino has signed off \u2014 sends automatically (Automate).'],
+  ['Log','Every step is written to the Activity log for audit.']
+];
+
+const PATHS = [
+  ['Order / shipment status reply','High-volume, templated — a strong early auto-send candidate once proven.'],
+  ['Invoice / AP acknowledgement','Routine confirmations; flip only after a long clean track record.'],
+  ['Customs / exception correspondence','Judgement-heavy and higher-risk — we recommend this stays human-approved.']
+];
+
+const ACCESS = [
+  ['Build identity in Savino\u2019s tenant','Internal member account, or a guest with Copilot Studio guest access explicitly enabled (blocked by default).','M365 / Entra admin', false],
+  ['Environment Maker role','The minimum role needed to build & edit in the target Power Platform environment.','Power Platform admin', false],
+  ['New environment (if needed)','We ask an admin to create it rather than request admin rights ourselves.','Power Platform Administrator', false],
+  ['DLP policy check','Must allow the Outlook connector together with the knowledge connectors (SharePoint / Excel / Dataverse).','Power Platform admin', false],
+  ['Dedicated shared mailbox','A mailbox for this engagement — not a live personal or production inbox.','Exchange admin', false],
+  ['FULL ACCESS to that mailbox','⚠ Most mis-scoped item. "Send As" alone is NOT enough — it can\u2019t monitor the inbox or move items.','Exchange admin', true],
+  ['Copilot Studio / M365 Copilot licence','Assigned to the build/run account (M365 Copilot includes a Studio message quota).','Licensing admin', false],
+  ['Time-box + HITL boundary in the SOW','Access reviewed & revoked at handover; the draft-then-approve boundary agreed up front.','Engagement sponsor', true]
+];
+
+const LIMITS = [
+  ['AI reliability',['Hallucination is a real risk, not just tuning — we use high grounding strictness and "answer only from the source", which reduces not eliminates it (hence the approval checkpoint).','No model fine-tuning — we supply instructions & knowledge, not custom-trained tone.','Non-English quality varies; English performs best — relevant for multi-language correspondence.','Conversation memory weakens past ~10 exchanges — fine for a single reply, a constraint on long threads.']],
+  ['Integration',['No native non-Microsoft database querying — reading a freight system of record (e.g. CargoWise) routes through Power Automate + a premium connector (extra work).','Premium connectors cost extra (SAP, Salesforce, most third-party).','Structured-document ingestion is unreliable — tabular PDFs / complex Excel extract poorly as knowledge.','On-premises data needs a gateway; a 5-minute per-response streaming timeout errors rather than degrades.']],
+  ['Capacity',['Per-agent throttling ~8,000 requests/min; Dataverse tiers enforce 50–100 RPM (trial/dev as low as 10 RPM).','500-file cap on direct knowledge uploads per agent; 512 MB/file.','Sessions auto-close after 60 minutes or 100 turns.','Latency ~2–5s simple, 5–10s+ with knowledge, 10–15s+ with chained integrations.']],
+  ['Governance & compliance',['Audit trails are coarse — the Activity log shows that an action happened, not a fine-grained trace of which source drove an answer.','Data residency — generative processing may occur outside a residency region; we verify against GDPR / EU residency before go-live.','Microsoft-hosted only — no self-hosting / private-cloud option.','Vendor lock-in to the Microsoft 365 ecosystem.']]
+];
+
+/* ---------- RENDER: option cards ---------- */
+const lvlBadge = {nocode:'b-nocode',lowcode:'b-lowcode',procode:'b-procode'};
+const statusBadge = s => s==='ga'
+  ? '<span class="badge b-ga">GA</span>'
+  : '<span class="badge b-prev">PREVIEW</span>';
+const cardsEl = document.getElementById('optcards');
+cardsEl.innerHTML = OPTIONS.map(o=>`
+  <div class="opt${o.rec?' isrec':''}" data-level="${o.level}">
+    <div class="head" onclick="this.parentElement.classList.toggle('open')">
+      <div>
+        <p class="t">${o.name} ${o.rec?'<span class="badge b-rec">★ Recommended base</span>':''}</p>
+        <p class="sub">${o.sub}</p>
+        <div style="margin-top:7px;display:flex;gap:7px;flex-wrap:wrap">
+          <span class="badge ${lvlBadge[o.level]}">${o.lvlLabel}</span>${statusBadge(o.status)}
+        </div>
+      </div>
+      <span class="chev">▶</span>
+    </div>
+    <div class="body"><div class="bodyinner">
+      <div class="meta">
+        <span><b>Archetype:</b> ${o.archetype}</span>
+        <span><b>Tooling:</b> ${o.tooling}</span>
+        <span><b>Owner:</b> ${o.owner}</span>
+      </div>
+      <div class="twocol">
+        <div class="pro"><h5>Strengths</h5><ul>${o.pros.map(p=>`<li>${p}</li>`).join('')}</ul></div>
+        <div class="con"><h5>Trade-offs</h5><ul>${o.cons.map(c=>`<li>${c}</li>`).join('')}</ul></div>
+      </div>
+      <div class="fit"><b>Savino fit:</b> ${o.fit}</div>
+    </div></div>
+  </div>`).join('');
+
+/* filter chips */
+document.querySelectorAll('.filterbar .chip').forEach(ch=>{
+  ch.onclick=()=>{
+    document.querySelectorAll('.filterbar .chip').forEach(c=>c.classList.remove('on'));
+    ch.classList.add('on');
+    const f=ch.dataset.f;
+    document.querySelectorAll('.opt').forEach(o=>{
+      o.classList.toggle('hide', !(f==='all'||o.dataset.level===f));
+    });
+  };
+});
+
+/* archetype toggle */
+document.querySelectorAll('.seg button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.seg button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    document.querySelectorAll('.arch').forEach(a=>a.classList.remove('on'));
+    document.getElementById('arch-'+b.dataset.arch).classList.add('on');
+  };
+});
+
+/* pipeline */
+const pipeEl=document.getElementById('pipe'), pexpl=document.getElementById('pexpl');
+pipeEl.innerHTML=PIPE.map((p,i)=>`<div class="pstep" data-i="${i}">
+  <div class="n">${i+1}</div><div class="nm">${p[0]}</div></div>`).join('');
+pipeEl.querySelectorAll('.pstep').forEach(s=>{
+  s.onclick=()=>{
+    pipeEl.querySelectorAll('.pstep').forEach(x=>x.classList.remove('on'));
+    s.classList.add('on');
+    pexpl.innerHTML='<b>'+PIPE[s.dataset.i][0]+'.</b> '+PIPE[s.dataset.i][1];
+  };
+});
+pipeEl.querySelector('.pstep').click();
+
+/* autonomy toggles */
+const pathsEl=document.getElementById('paths'), autosum=document.getElementById('autosummary');
+pathsEl.innerHTML=PATHS.map((p,i)=>`
+  <div class="pathrow">
+    <div class="lab"><b>${p[0]}</b><small>${p[1]}</small></div>
+    <div class="toggle" data-i="${i}" onclick="togglePath(this)">
+      <div class="lblset"><span class="l">Approve</span><span class="r">Auto</span></div>
+      <div class="knob">Approve</div>
+    </div>
+  </div>`).join('');
+function updateAuto(){
+  const autos=[...document.querySelectorAll('.toggle.auto')].length;
+  autosum.innerHTML = autos===0
+    ? 'All paths <b>human-approved</b> — the safe default we ship with.'
+    : `<b>${autos}</b> of ${PATHS.length} paths set to auto-send. Each flip is a governance decision on a proven path — the drafting code never changed.`;
+}
+function togglePath(t){
+  t.classList.toggle('auto');
+  t.querySelector('.knob').textContent = t.classList.contains('auto')?'Auto':'Approve';
+  updateAuto();
+}
+updateAuto();
+
+/* access checklist */
+const accEl=document.getElementById('acclist'), accbar=document.getElementById('accbar');
+accEl.innerHTML=ACCESS.map((a,i)=>`
+  <div class="acc${a[3]?' flag':''}" data-i="${i}" onclick="this.classList.toggle('done');updateAcc()">
+    <div class="ck">✓</div>
+    <div class="txt"><b>${a[0]}</b><small>${a[1]}</small><div class="who">Granted by: ${a[2]}</div></div>
+  </div>`).join('');
+function updateAcc(){
+  const n=ACCESS.length, done=[...document.querySelectorAll('.acc.done')].length;
+  accbar.style.width=(done/n*100)+'%';
+}
+updateAcc();
+
+/* limitations */
+const limEl=document.getElementById('limlist');
+limEl.innerHTML=LIMITS.map(l=>`
+  <div class="lim">
+    <div class="lh" onclick="this.parentElement.classList.toggle('open')">
+      <span>${l[0]}</span><span class="chev">▶</span></div>
+    <div class="lb"><ul>${l[1].map(x=>`<li>${x}</li>`).join('')}</ul></div>
+  </div>`).join('');
+
+/* fit selector */
+const SEL={};
+document.querySelectorAll('.q').forEach(q=>{
+  q.querySelectorAll('.chip').forEach(c=>{
+    c.onclick=()=>{
+      q.querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));
+      c.classList.add('on');
+      SEL[q.dataset.k]=c.dataset.v;
+      recompute();
+    };
+  });
+});
+function recompute(){
+  const {builder,control,reach,scale}=SEL;
+  if(!builder||!control||!reach||!scale) return;
+  let pick,why;
+  // score toward a route
+  const proSignals=(control==='full')+(reach==='beyond')+(scale==='enterprise')+(builder==='dev');
+  const noSignals=(builder==='business')+(control==='none')+(reach==='m365')+(scale==='personal');
+  if(reach==='beyond'||control==='full'){
+    if(builder==='dev'||scale==='enterprise'){
+      pick='Microsoft 365 Agents SDK (pro-code, custom-engine)';
+      why='You want full control of model & orchestration and reach beyond Microsoft 365 with developer ownership — that\u2019s the multi-channel SDK. Consider Azure AI Foundry if you\u2019re standardising on Foundry model governance.';
+    } else {
+      pick='Copilot Studio — custom-engine agent (low-code)';
+      why='You need own-model / proactive / wider reach but want to stay low-code and governed. A Copilot Studio custom-engine agent plugs in Azure OpenAI without standing up your own hosting.';
+    }
+  } else if(noSignals>=3){
+    pick='Agent Builder (no-code declarative agent)';
+    why='A business user, Copilot\u2019s defaults, inside M365, personal/departmental scope — the fastest proof-of-concept. Harden in Copilot Studio before production.';
+  } else if(scale==='enterprise'||builder==='dev'){
+    pick='Microsoft 365 Agents Toolkit (pro-code declarative)';
+    why='M365-bound but you want source control, multi-environment ALM and manifest-level features (MCP, multi-agent). Productionise here.';
+  } else {
+    pick='Copilot Studio — declarative agent (low-code) ★';
+    why='Maker + IT, some custom actions, inside M365, line-of-business scale with governance — our recommended base. It\u2019s also where the email-agent GA tiers and the human-approval step live.';
+  }
+  document.getElementById('rpick').textContent=pick;
+  document.getElementById('rwhy').textContent=why;
+}
+</script>
+</body>
+</html>
